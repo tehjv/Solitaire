@@ -1,5 +1,6 @@
 package objects;
 
+import constants.Color;
 import constants.Rank;
 import constants.Suit;
 
@@ -11,6 +12,7 @@ public class Card {
 	private Rank rank;
 	private Suit suit;
 	private boolean faceUpStatus;
+	private Color color;
 
 	/**
 	 * Creates card object, sets rank and suit value.
@@ -18,6 +20,12 @@ public class Card {
 	public Card(Rank rank, Suit suit) {
 		this.rank = rank;
 		this.suit = suit;
+		if (suit.ordinal() < 2) {
+			color = Color.RED;
+		} else {
+			color = Color.BLACK;
+		}
+
 	}
 
 	/**
@@ -61,7 +69,7 @@ public class Card {
 		if (faceUpStatus == true) {
 			return "[" + b + "-" + a + "]";
 		} else {
-			return "[X-X ]";
+			return "[<::>]";
 		}
 	}
 
@@ -71,6 +79,10 @@ public class Card {
 
 	public void setFaceUpStatus(boolean faceUpStatus) {
 		this.faceUpStatus = faceUpStatus;
+	}
+
+	public Color getColor() {
+		return color;
 	}
 
 }
