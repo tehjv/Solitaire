@@ -23,7 +23,7 @@ public class Game {
 	public void startGame() {
 		gameDisplay.showWelcomeMessage();
 		setInitialDeck();
-		// shuffle();
+		//shuffle();
 		setTableau();
 		setStock();
 		// initializing foundation
@@ -42,13 +42,17 @@ public class Game {
 			gameDisplay.displaySetup();
 			numberOfMoves++;
 
-			if (foundations.get(0).size() + foundations.get(1).size() + foundations.get(2).size()
-					+ foundations.get(3).size() == 52) {
+			if ((foundations.get(0).size() + foundations.get(1).size() + foundations.get(2).size()
+					+ foundations.get(3).size() == 52)) {
+				System.out.println("\n\n\nSOLITAIRE SOLVER APPLICATION won after " + numberOfMoves + " moves.");
+
+				gameFinished = true;
+
+			} else if (gameSolver.haveSeenAllOfStock == ((stock.size() + waste.size()) / 3) + 2) {
+				System.out.println("\n\n\nSOLITAIRE SOLVER APPLICATION lost. " + numberOfMoves);
 				gameFinished = true;
 			}
 		}
-
-		System.out.println("\n\n\nSOLITAIRE SOLVER APPLICATION won after " + numberOfMoves + " moves.");
 
 		// gameSolver.listMoves();
 		// System.out.print(gameSolver.getMoveList());
@@ -181,7 +185,6 @@ public class Game {
 	}
 
 	private class GameDisplay {
-		boolean wasteRefresh = true;
 
 		public void showWelcomeMessage() {
 			System.out.println("STARTING SOLITAIRE SOLVER APPLICATION");
@@ -241,14 +244,15 @@ public class Game {
 				System.out.print("   Get\t");
 				System.out.print("Here->\t");
 
-				if (wasteRefresh) {
-					for (int i = 1; i < 4; i++) {
+				if (cardsToDisplay > 0 && waste.size() < 3) {
+					for (int i = 1; i < cardsToDisplay + 1; i++) {
 						if (waste.get(waste.size() - i) != null) {
 							System.out.print(waste.get(waste.size() - i) + "\t");
 						}
 					}
 				} else {
-					for (int i = 1; i < cardsToDisplay + 1; i++) {
+
+					for (int i = 1; i < 4; i++) {
 						if (waste.get(waste.size() - i) != null) {
 							System.out.print(waste.get(waste.size() - i) + "\t");
 						}
@@ -271,45 +275,184 @@ public class Game {
 
 	private class GameSolver {
 		ArrayList<Move> moveList = new ArrayList<Move>();
-		int consecutiveMovesFromWaste = 0;
-		// move prioty: 0 = acemove, 1 = deucemove
+
+		int haveSeenAllOfStock = 0;
+
 		// boolean hasAceMove = false;
-		int movePriority = 40;
 
 		public Move chooseMove() {
-			int moveConsidered = 0; // index of MoveList
-			if (!moveList.isEmpty()) {
+			ArrayList<Move> moveConsidered = new ArrayList<Move>(); // index
+																	// of
+																	// MoveList
+			int movePriority = 40; // should be inside chooseMove() and needs
+									// more scenarios
+			// move priority: 0 = acemove, 1 = deucemove
+			if (moveList.size() > 0) {
 				boolean consideredAMove = false;
-				do {
+				while (consideredAMove == false) {
+					// checking for ace to foundation move
 					for (int i = 0; i < moveList.size(); i++) {
 						if (moveList.get(i).cardToMove.getRank() == Rank.Ace) {
 							movePriority = 0;
-							moveConsidered = i;
+							moveConsidered.add(moveList.get(i));
+							break;
 						}
 					}
 					if (movePriority != 40) {
 						break;
 					}
+
+					// checking for deuce to foundation move
 					for (int i = 0; i < moveList.size(); i++) {
-						if (moveList.get(i).cardToMove.getRank() == Rank.Two) {
+						if (moveList.get(i).cardToMove.getRank() == Rank.Two && moveList.get(i).moveL == 8) {
 							movePriority = 1;
-							moveConsidered = i;
+							moveConsidered.add(moveList.get(i));
+							break;
 						}
 					}
 					if (movePriority != 40) {
 						break;
+					}
+
+					// checking for moves that frees downcards
+					for (int i = 0; i < moveList.size(); i++) {
+
+						Move move = moveList.get(i);
+
+						// stupid test
+						if (move.initialL < 7) {
+							System.out.println("FREEDOWN " + tableau.get(move.initialL)
+									.get(tableau.get(move.initialL).indexOf(move.cardToMove)));
+						}
+
+						if (move.initialL < 7 && tableau.get(move.initialL).indexOf(move.cardToMove) != 0
+								&& tableau.get(move.initialL)
+										.get(tableau.get(move.initialL).indexOf(move.cardToMove) - 1)
+										.isFaceUpStatus() == false) {
+							moveConsidered.add(move);
+							movePriority = 2; // with tie possibility
+						}
+					}
+
+					if (movePriority != 40) {
+						break;
+					}
+
+					// checking for king to empty space move
+					for (int i = 0; i < moveList.size(); i++) {
+						Move move = moveList.get(i);
+						if (move.cardToMove.getRank() == Rank.King && tableau.get(move.moveL).isEmpty()) {
+							movePriority = 3; // with tie possibility
+							moveConsidered.add(move);
+						}
+					}
+
+					if (movePriority != 40) {
+						break;
+					}
+
+					// checking for moves from Stock to Tableau
+
+					for (int i = 0; i < moveList.size(); i++) {
+
+						Move move = moveList.get(i);
+						if (move.initialL == 7) {
+							moveConsidered.add(move);
+							movePriority = 4;
+						}
+					}
+
+					if (movePriority != 40) {
+						break;
+					}
+
+					// checking for moves that clear for spaces without king to
+					// occupy
+					// general moves
+					for (int i = 0; i < moveList.size(); i++) {
+						Move move = moveList.get(i);
+						moveConsidered.add(move);
+						movePriority = 5;
 					}
 					consideredAMove = true;
-				} while (consideredAMove == false);
+				}
 
 			}
+
+			System.out.println(movePriority);
 
 			if (moveList.isEmpty()) {
 				return null;
 			} else if (moveList.size() == 1) {
-				return moveList.get(0);
+				if (movePriority == 5 && tableau.get(moveList.get(0).initialL).indexOf(moveList.get(0).cardToMove) != 0
+						&& tableau.get(moveList.get(0).initialL)
+								.get(tableau.get(moveList.get(0).initialL).indexOf(moveList.get(0).cardToMove) - 1)
+								.isFaceUpStatus() != false) {
+					return null;
+				} else {
+					return moveList.get(0);
+				}
 			} else if ((movePriority == 0 || movePriority == 1)) {
-				return moveList.get(moveConsidered);
+				return moveConsidered.get(0);
+			} else if (movePriority == 2) {
+				if (moveConsidered.size() > 1) {
+					Move finalMove = moveConsidered.get(0);
+					for (int i = 1; i < moveConsidered.size(); i++) {
+						if (getCountFaceDown(tableau.get(moveConsidered.get(i).initialL)) > getCountFaceDown(
+								tableau.get(finalMove.initialL))) {
+							finalMove = moveConsidered.get(i);
+						}
+					}
+					return finalMove;
+				} else {
+					return moveConsidered.get(0);
+				}
+
+			} else if (movePriority == 3) {
+				// resolve tie with number of facedown
+				if (moveConsidered.size() > 1) {
+					Move finalMove = moveConsidered.get(0);
+					for (int i = 1; i < moveConsidered.size(); i++) {
+						if (getCountFaceDown(tableau.get(moveConsidered.get(i).initialL)) > getCountFaceDown(
+								tableau.get(finalMove.initialL))) {
+							finalMove = moveConsidered.get(i);
+						}
+					}
+					return finalMove;
+				} else {
+					return moveConsidered.get(0);
+				}
+
+			} else if (movePriority == 4) {
+				return moveConsidered.get(0);
+			} else if (movePriority == 5) {
+
+				for (int i = 1; i < moveConsidered.size(); i++) {
+					boolean movableKingExists = false;
+					for (int k = 0; k < tableau.size(); k++) {
+						if (tableau.get(i).isEmpty() == false) {
+							for (int j = tableau.get(k).size() - 1; j > -1; j--) {
+
+								Card card = tableau.get(k).get(j);
+
+								if (card.isFaceUpStatus() != false && card.getRank() == Rank.King) {
+									movableKingExists = true;
+								}
+							}
+						}
+					}
+					if ((movableKingExists == true && tableau.get(moveConsidered.get(i).initialL).size() == 1)
+							|| ((tableau.get(moveConsidered.get(i).initialL).size() > 1
+									&& tableau.get(moveConsidered.get(i).initialL)
+											.get(tableau.get(moveConsidered.get(i).initialL)
+													.indexOf(moveConsidered.get(i).cardToMove) - 1)
+											.isFaceUpStatus() == false))) {
+						return moveConsidered.get(i);
+					} else {
+						return null;
+					}
+				}
+				return null;
 			} else {
 				return null;
 			}
@@ -343,10 +486,13 @@ public class Game {
 					for (int i = 0; i < waste.size(); i++) {
 						waste.get(i).setFaceUpStatus(true);
 					}
+					haveSeenAllOfStock++;
 
 				} else {
 					if (stock.size() >= 3) {
 						waste.addAll(stock.subList(0, 3));
+					} else if (stock.size() == 1) {
+						waste.add(stock.get(0));
 					} else {
 						waste.addAll(stock.subList(0, stock.size() - 1));
 					}
@@ -355,40 +501,38 @@ public class Game {
 					for (int i = 0; i < waste.size(); i++) {
 						waste.get(i).setFaceUpStatus(true);
 					}
-					gameDisplay.wasteRefresh = true;
+
 				}
 				System.out.println("Chosen move: Draw from Stock");
+
 			} else if (chosenMove.initialL < 7 && chosenMove.moveL == 8) {
 				foundations.get(chosenMove.foundationSuit)
 						.add(tableau.get(chosenMove.initialL).remove(tableau.get(chosenMove.initialL).size() - 1));
 			} else if (chosenMove.initialL == 7 && chosenMove.moveL == 8) {
 				foundations.get(chosenMove.foundationSuit).add(waste.remove(waste.size() - 1));
-				if (gameDisplay.wasteRefresh == true) {
-					gameDisplay.wasteRefresh = false;
-				}
-				consecutiveMovesFromWaste++;
-				if (consecutiveMovesFromWaste == 3) {
-					if (gameDisplay.wasteRefresh == false) {
-						gameDisplay.wasteRefresh = true;
-					}
-				}
+
 			} else if (chosenMove.initialL < 7 && chosenMove.moveL < 7) {
-				tableau.get(chosenMove.moveL)
-						.add(tableau.get(chosenMove.initialL).remove(tableau.get(chosenMove.initialL).size() - 1));
+
+				if (tableau.get(chosenMove.initialL)
+						.indexOf(chosenMove.cardToMove) == tableau.get(chosenMove.initialL).size() - 1) {
+					tableau.get(chosenMove.moveL)
+							.add(tableau.get(chosenMove.initialL).remove(tableau.get(chosenMove.initialL).size() - 1));
+				} else {
+
+					List<Card> cards = tableau.get(chosenMove.initialL).subList(
+							tableau.get(chosenMove.initialL).indexOf(chosenMove.cardToMove),
+							tableau.get(chosenMove.initialL).size());
+					tableau.get(chosenMove.moveL).addAll(cards);
+					tableau.get(chosenMove.initialL).removeAll(cards);
+				}
+				// TODO: TES THIS
 			} else if (chosenMove.initialL == 7 && chosenMove.moveL < 7) {
 				tableau.get(chosenMove.moveL).add(waste.remove(waste.size() - 1));
-				if (gameDisplay.wasteRefresh == true) {
-					gameDisplay.wasteRefresh = false;
-				}
-				consecutiveMovesFromWaste++;
-				if (consecutiveMovesFromWaste == 3) {
-					if (gameDisplay.wasteRefresh == false) {
-						gameDisplay.wasteRefresh = true;
-					}
-				}
+
 			}
 
 			if (chosenMove != null) {
+				haveSeenAllOfStock = 0;
 				System.out.println("Chosen move: " + moveList.get(moveList.indexOf(chosenMove)).toString());
 			}
 			moveList.clear();
@@ -403,6 +547,16 @@ public class Game {
 					}
 				}
 			}
+		}
+
+		public int getCountFaceDown(Deck deck) {
+			int count = 0;
+			for (int i = 0; i < deck.size(); i++) {
+				if (deck.get(i).isFaceUpStatus() == false) {
+					count++;
+				}
+			}
+			return count;
 		}
 
 		public ArrayList<Move> getMoveList() {
@@ -465,14 +619,34 @@ public class Game {
 			for (int i = 0; i < tableau.size(); i++) {
 				if (tableau.get(i).isEmpty() == false) {
 					Card card = tableau.get(i).get(tableau.get(i).size() - 1);
-					if (card.getRank() == Rank.King && hasEmptySpace && tableau.get(i).size() != 1) {
-						moveList.add(new Move(card, 2, i, emptySpace));
+
+					for (int j = tableau.get(i).size() - 1; j > -1; j--) {
+
+						card = tableau.get(i).get(j);
+
+						if (card.isFaceUpStatus() != false) {
+							// looking for king to empty space moves
+							if (card.getRank() == Rank.King && hasEmptySpace && tableau.get(i).indexOf(card) != 0) {
+								moveList.add(new Move(card, 2, i, emptySpace));
+								break;
+							}
+
+							// looking for tableau to tableau moves in general
+							for (int k = 0; k < 7; k++) {
+								if (!tableau.get(k).isEmpty()
+										&& tableau.get(k).get(tableau.get(k).size() - 1).getRank()
+												.ordinal() == card.getRank().ordinal() + 1
+										&& tableau.get(k).get(tableau.get(k).size() - 1).getColor() != card
+												.getColor()) {
+									moveList.add(new Move(card, 2, i, k));
+
+								}
+							}
+						}
+
 					}
 
 				}
-
-				// TODO: tableau to tableau move other than king to empty space
-
 			}
 		}
 
@@ -486,6 +660,7 @@ public class Game {
 									.ordinal() == card.getRank().ordinal() + 1
 							&& tableau.get(i).get(tableau.get(i).size() - 1).getColor() != card.getColor()) {
 						moveList.add(new Move(card, 3, 7, i));
+
 					}
 				}
 			}
@@ -518,9 +693,5 @@ public class Game {
 			}
 
 		}
-
-		// public ArrayList<Deck> getTableau() {
-		// return tableau;
-		// }
 	}
 }
